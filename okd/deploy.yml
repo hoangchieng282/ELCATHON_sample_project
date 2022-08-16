@@ -1,0 +1,127 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: petclinic-deploy
+labels:
+  app.kubernetes.io/name: petclinic
+  app.kubernetes.io/instance: petclinic-main
+  app.kubernetes.io/part-of: petclinic
+objects:
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: petclinic
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: petclinic-main
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/instance: petclinic-main
+          annotations:
+            containerid: ${CONTAINER_ID}
+        spec:
+          containers:
+            - name: petclinic
+              image: prj-elcavn-training-docker.artifactory.svc.elca.ch/petclinic-with-permission-plugin:chih
+              imagePullPolicy: Always
+              resources:
+                limits:
+                  cpu: '1'
+                  memory: 2Gi
+                requests:
+                  cpu: 100m
+                  memory: 2Gi
+              readinessProbe:
+                httpGet:
+                  path: /petclinic
+                  port: 8080
+                  scheme: HTTP
+                timeoutSeconds: 60
+                periodSeconds: 10
+                successThreshold: 1
+                failureThreshold: 5
+                terminationMessagePath: /dev/termination-log
+                name: petclinic
+                livenessProbe:
+                  httpGet:
+                    path: /petclinic
+                    port: 8080
+                    scheme: HTTP
+                  timeoutSeconds: 60
+                  periodSeconds: 10
+                  successThreshold: 1
+                  failureThreshold: 5
+                imagePullPolicy: Always
+                startupProbe:
+                  httpGet:
+                    path: /petclinic
+                    port: 8080
+                    scheme: HTTP
+                  timeoutSeconds: 60
+                  periodSeconds: 10
+                  successThreshold: 1
+                  failureThreshold: 5
+              # startupProbe:
+              #   exec:
+              #     command:
+              #       - /bin/bash
+              #       - '-c'
+              #       - curl -s localhost:8080/api/system/status | grep '"status":"UP"'
+              #   periodSeconds: 10
+              #   failureThreshold: 25
+              #   successThreshold: 1
+              # readinessProbe:
+              #   exec:
+              #     command:
+              #       - /bin/bash
+              #       - '-c'
+              #       - curl -s localhost:8080/api/system/status | grep '"status":"UP"'
+              #   periodSeconds: 10
+              #   failureThreshold: 3
+              #   successThreshold: 1
+              # livenessProbe:
+              #   exec:
+              #     command:
+              #       - /bin/bash
+              #       - '-c'
+              #       - curl -s localhost:8080/api/system/status | grep '"status":"UP"'
+              #   periodSeconds: 10
+              #   failureThreshold: 10
+              #   successThreshold: 1
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: petclinic
+    spec:
+      ports:
+        - name: petclinic
+          port: 8080
+      selector:
+        app.kubernetes.io/instance: petclinic-main
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: petclinic
+    spec:
+      host: petclinic-prj-elcavn-training-chih.apps.okd.svc.elca.ch
+      to:
+        kind: Service
+        name: petclinic
+  # - apiVersion: extensions/v1beta1
+  #   kind: Ingress
+  #   metadata:
+  #     name: kubia
+  #   spec:
+  #     rules:
+  #       - host: petclinic-prj-elcavn-training-chih.apps.okd.svc.elca.ch
+  #     http:
+  #       paths:
+  #         - path: /petclinic
+  #           backend:
+  #             serviceName: petclinic
+  #             servicePort: 8080
+parameters:
+  - name: CONTAINER_ID
